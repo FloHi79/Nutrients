@@ -1,0 +1,889 @@
+import React, { useState } from 'react';
+import { 
+  Heart, 
+  Activity, 
+  Brain, 
+  Battery, 
+  Moon, 
+  Utensils, 
+  Thermometer, 
+  ChevronRight, 
+  CheckCircle, 
+  AlertCircle,
+  Droplet,
+  ArrowRight,
+  Info,
+  RotateCcw,
+  MessageSquare,
+  Sun,
+  Dumbbell,
+  Wine,
+  Eye,
+  Smile
+} from 'lucide-react';
+
+// --- Daten & Logik basierend auf dem Buch ---
+
+const questions = [
+  // --- BASIS DATEN (1-2) ---
+  {
+    id: 1,
+    text: "Wie alt sind Sie?",
+    options: [
+      { label: "Unter 30", value: "young" },
+      { label: "30 - 45", value: "middle" },
+      { label: "46 - 60 (Wechseljahre/Andropause)", value: "menopause" },
+      { label: "Über 60", value: "senior" }
+    ]
+  },
+  {
+    id: 2,
+    text: "Welches Geschlecht haben Sie?",
+    options: [
+      { label: "Weiblich", value: "female" },
+      { label: "Männlich", value: "male" }
+    ]
+  },
+  
+  // --- ZIELE & ENERGIE (3-4) ---
+  {
+    id: 3,
+    text: "Was ist Ihr primäres Ziel? (Mehrfachauswahl möglich)",
+    multi: true,
+    options: [
+      { label: "Prävention & gesund alt werden", value: "prevention" },
+      { label: "Leistungssteigerung & Energie", value: "performance" },
+      { label: "Linderung chronischer Beschwerden", value: "healing" },
+      { label: "Gewichtsreduktion / Stoffwechsel", value: "weight" }
+    ]
+  },
+  {
+    id: 4,
+    text: "Wie würden Sie Ihr aktuelles Energielevel beschreiben?",
+    options: [
+      { label: "Top fit", value: "high" },
+      { label: "Geht so, Mittagstief", value: "medium" },
+      { label: "Dauerhaft erschöpft / Burnout-Gefühl", value: "low" },
+      { label: "Morgens müde, abends wach", value: "adrenal" }
+    ]
+  },
+
+  // --- ERNÄHRUNG & LEBENSSTIL (5, 16-20) ---
+  {
+    id: 5,
+    text: "Wie ernähren Sie sich hauptsächlich?",
+    options: [
+      { label: "Mischkost (Alles)", value: "omni" },
+      { label: "Vegetarisch", value: "veg" },
+      { label: "Vegan", value: "vegan" },
+      { label: "Low Carb / Keto", value: "keto" }
+    ]
+  },
+  {
+    id: 16,
+    text: "Wie oft essen Sie fetten Seefisch (Lachs, Hering, Makrele)?",
+    options: [
+      { label: "Mindestens 2x pro Woche", value: "often" },
+      { label: "Ab und zu / Selten", value: "rare" },
+      { label: "Nie / Ich mag keinen Fisch", value: "never" }
+    ]
+  },
+  {
+    id: 17,
+    text: "Wie sieht Ihr Sportpensum aus?",
+    options: [
+      { label: "Kein Sport / Bewegungsmangel", value: "none" },
+      { label: "Moderat (1-2x pro Woche)", value: "moderate" },
+      { label: "Intensiv / Leistungssport", value: "athlete" }
+    ]
+  },
+  {
+    id: 18,
+    text: "Wie viel Zeit verbringen Sie im Sommer täglich in der direkten Sonne (ohne Sonnencreme)?",
+    options: [
+      { label: "Viel (täglich draußen)", value: "high" },
+      { label: "Mittel", value: "medium" },
+      { label: "Wenig / Ich meide die Sonne / Bürojob", value: "low" }
+    ]
+  },
+  {
+    id: 19,
+    text: "Rauchen Sie?",
+    options: [
+      { label: "Nein", value: "no" },
+      { label: "Ja, gelegentlich", value: "occasional" },
+      { label: "Ja, regelmäßig", value: "smoker" }
+    ]
+  },
+  {
+    id: 20,
+    text: "Trinken Sie regelmäßig Alkohol?",
+    options: [
+      { label: "Nein / Sehr selten", value: "no" },
+      { label: "Mäßig (am Wochenende)", value: "moderate" },
+      { label: "Regelmäßig (fast täglich / >2 Gläser Wein)", value: "high" }
+    ]
+  },
+
+  // --- SYMPTOME & ORGANE (6-12, 15, 21-23) ---
+  {
+    id: 6,
+    text: "Leiden Sie unter Schlafstörungen?",
+    multi: true,
+    options: [
+      { label: "Nein, ich schlafe gut", value: "no", exclusive: true },
+      { label: "Einschlafprobleme", value: "sleep_onset" },
+      { label: "Durchschlafprobleme (wache nachts auf)", value: "sleep_maintain" }
+    ]
+  },
+  {
+    id: 7,
+    text: "Probleme mit Haut, Haaren oder Nägeln?",
+    multi: true,
+    options: [
+      { label: "Nein", value: "no", exclusive: true },
+      { label: "Haarausfall / dünnes Haar", value: "hair" },
+      { label: "Brüchige Nägel / weiße Flecken", value: "nails" },
+      { label: "Trockene / unreine Haut", value: "skin" },
+      { label: "Wundheilungsstörungen", value: "wound" }
+    ]
+  },
+  {
+    id: 8,
+    text: "Wie steht es um Ihr Immunsystem?",
+    options: [
+      { label: "Stabil", value: "good" },
+      { label: "Gelegentlich krank", value: "medium" },
+      { label: "Häufige Infekte / Herpes / braucht lange zur Erholung", value: "weak" },
+      { label: "Autoimmunerkrankung (z.B. Hashimoto)", value: "autoimmune" }
+    ]
+  },
+  {
+    id: 9,
+    text: "Muskel- oder Gelenkbeschwerden?",
+    multi: true,
+    options: [
+      { label: "Nein", value: "no", exclusive: true },
+      { label: "Krämpfe / Verspannungen", value: "muscle" },
+      { label: "Gelenkschmerzen / Arthrose", value: "joint" },
+      { label: "Rückenschmerzen / Bandscheibe", value: "back" }
+    ]
+  },
+  {
+    id: 21,
+    text: "Haben Sie Probleme mit Zähnen oder Zahnfleisch?",
+    options: [
+      { label: "Nein", value: "no" },
+      { label: "Zahnfleischbluten / Parodontitis", value: "gums" },
+      { label: "Kariesanfälligkeit / schlechte Zahnsubstanz", value: "teeth" }
+    ]
+  },
+  {
+    id: 22,
+    text: "Wie ist Ihr Kälteempfinden?",
+    options: [
+      { label: "Normal", value: "normal" },
+      { label: "Ich friere sehr leicht (kalte Hände/Füße)", value: "cold" },
+      { label: "Mir ist oft zu warm / Hitzewallungen", value: "hot" }
+    ]
+  },
+  {
+    id: 23,
+    text: "Leiden Sie unter Nachtblindheit oder Sehproblemen bei Dämmerung?",
+    options: [
+      { label: "Nein", value: "no" },
+      { label: "Ja, sehe im Dunkeln schlecht", value: "nightblind" }
+    ]
+  },
+  {
+    id: 10,
+    text: "Wie ist Ihre Stimmungslage?",
+    multi: true,
+    options: [
+      { label: "Ausgeglichen", value: "balanced", exclusive: true },
+      { label: "Gestresst / Dünnes Nervenkostüm", value: "stressed" },
+      { label: "Ängstlich / Depressive Verstimmungen", value: "depressive" },
+      { label: "Stimmungsschwankungen (PMS)", value: "moody" }
+    ]
+  },
+  {
+    id: 11,
+    text: "Schilddrüsenstatus?",
+    options: [
+      { label: "Unauffällig / Unbekannt", value: "no" },
+      { label: "Unterfunktion / Hashimoto", value: "hypo" },
+      { label: "Überfunktion", value: "hyper" },
+      { label: "Knoten / Kropf", value: "nodes" }
+    ]
+  },
+  {
+    id: 12,
+    text: "Verdauungsprobleme?",
+    multi: true,
+    options: [
+      { label: "Nein", value: "no", exclusive: true },
+      { label: "Blähbauch / Reizdarm", value: "bloating" },
+      { label: "Sodbrennen / Reflux", value: "reflux" },
+      { label: "Histaminintoleranz / Unverträglichkeiten", value: "intolerance" }
+    ]
+  },
+  
+  // --- RISIKOFAKTOREN & MEDIKAMENTE (13-14, 24) ---
+  {
+    id: 13,
+    text: "Wie hoch ist Ihr Stresslevel im Alltag?",
+    options: [
+      { label: "Niedrig", value: "low" },
+      { label: "Mittel", value: "medium" },
+      { label: "Hoch (Dauerstrom)", value: "high" }
+    ]
+  },
+  {
+    id: 24,
+    text: "Gibt es familiäre Vorbelastungen?",
+    multi: true,
+    options: [
+      { label: "Nein", value: "no", exclusive: true },
+      { label: "Herzinfarkt / Schlaganfall", value: "heart" },
+      { label: "Diabetes", value: "diabetes" },
+      { label: "Osteoporosis", value: "osteo" },
+      { label: "Demenz / Alzheimer", value: "dementia" }
+    ]
+  },
+  {
+    id: 14,
+    text: "Nehmen Sie regelmäßig Medikamente?",
+    multi: true,
+    options: [
+      { label: "Nein", value: "no", exclusive: true },
+      { label: "Säureblocker (PPI)", value: "ppi" },
+      { label: "Pille / Hormonspirale", value: "pill" },
+      { label: "Blutdrucksenker / Statine", value: "meds" },
+      { label: "Schilddrüsenhormone (L-Thyroxin)", value: "lthyrox" }
+    ]
+  },
+  {
+    id: 15,
+    text: "Haben Sie kognitive Beschwerden?",
+    multi: true,
+    options: [
+      { label: "Nein, Kopf ist klar", value: "no", exclusive: true },
+      { label: "Konzentrationsstörungen", value: "focus" },
+      { label: "Brain Fog (Nebel im Kopf)", value: "fog" },
+      { label: "Vergesslichkeit", value: "memory" }
+    ]
+  },
+  
+  // --- FREITEXT (25) ---
+  {
+    id: 25,
+    text: "Gibt es sonstige Beschwerden, Diagnosen oder Anmerkungen?",
+    type: "text",
+    placeholder: "z.B. Migräne, Gicht, Tinnitus, Restless Legs..."
+  }
+];
+
+// Laborparameter-Datenbank basierend auf Orfanos-Boeckel
+const labParameters = {
+  // --- Basiswerte ---
+  vitaminD: {
+    name: "Vitamin D3 (25-OH-Vitamin D)",
+    material: "Serum",
+    reason: "Basis für das Immunsystem, Knochen und Hormonregulation. Laut Buch haben fast alle Menschen in unseren Breitengraden einen Mangel. Zielwert: 50-70 ng/ml."
+  },
+  magnesium: {
+    name: "Magnesium",
+    material: "Vollblut (Heparin/EDTA)",
+    reason: "Serumwerte sind oft falsch gut! Magnesium muss intrazellulär gemessen werden (Vollblut). Essenziell bei Stress, Sport, Krämpfen und Herzrhythmus."
+  },
+  zink: {
+    name: "Zink",
+    material: "Vollblut (EDTA)",
+    reason: "Serumwerte nicht aussagekräftig. Wichtig für Immunsystem, Haut, Hormone, Schilddrüse. Bei HPU/KPU oft starker Mangel."
+  },
+  selen: {
+    name: "Selen",
+    material: "Vollblut (EDTA)",
+    reason: "Selenmangelgebiet Deutschland. Wichtig für Schilddrüse (T4->T3), Entgiftung und Zellschutz."
+  },
+  ferritin: {
+    name: "Ferritin (Eisenspeicher)",
+    material: "Serum",
+    reason: "Zeigt den Füllstand der Eisenspeicher. Wichtig bei Müdigkeit, Haarausfall, Schilddrüse. Achtung: Bei Entzündung (CRP hoch) kann Ferritin falsch hoch sein."
+  },
+  homocystein: {
+    name: "Homocystein",
+    material: "Serum (Spezialröhrchen)",
+    reason: "Funktionsmarker für B-Vitamine. Erhöht (>10 µmol/l) bedeutet Risiko für Gefäße und Gehirn (Demenz)."
+  },
+  
+  // --- Erweiterte Werte ---
+  b12: {
+    name: "Vitamin B12 (Holo-TC)",
+    material: "Serum",
+    reason: "Holo-TC ist das aktive B12 und zeigt einen Mangel früher an als das Gesamt-B12. Wichtig für Nerven, Energie und Zellteilung."
+  },
+  omega3: {
+    name: "Omega-3 Index",
+    material: "Erythrozyten (EDTA)",
+    reason: "Entzündungshemmung. Wichtig für Herz, Gehirn und bei Autoimmunerkrankungen. Ziel > 8%."
+  },
+  coq10: {
+    name: "Coenzym Q10",
+    material: "Serum/Vollblut",
+    reason: "Zellbenzin (Mitochondrien). Wichtig ab 40, bei Statineinnahme, Herzschwäche, Burnout oder Zahnfleischbluten."
+  },
+  iod: {
+    name: "Jod",
+    material: "Serum oder Urin (Sammelurin)",
+    reason: "Wichtig für Schilddrüse (Knotenprävention), Brustgewebe und Energie."
+  },
+  vitaminA: {
+    name: "Vitamin A (Retinol)",
+    material: "Serum",
+    reason: "Wichtig für Schleimhäute (Blase, Darm), Augen (Nachtsehen) und Immunsystem."
+  },
+  vitaminC: {
+    name: "Vitamin C",
+    material: "Vollblut (gefroren) oder Serum",
+    reason: "Bei chronischen Infekten, Rauchen oder Zahnfleischbluten oft verbraucht. Antioxidans."
+  },
+  
+  // --- Hormone ---
+  thyroid: {
+    name: "Schilddrüse komplett (TSH, fT3, fT4, TPO-AK)",
+    material: "Serum",
+    reason: "TSH allein reicht oft nicht. fT3 ist das aktive Hormon. Antikörper (TPO) zeigen Hashimoto an."
+  },
+  adrenal: {
+    name: "Nebennieren-Profil (Cortisol Tagesprofil & DHEA)",
+    material: "Speichel (Cortisol) / Serum (DHEA-S)",
+    reason: "Bei Erschöpfung ('Burnout'). Cortisol muss morgens hoch und abends tief sein. DHEA ist das 'Jugendhormon'."
+  },
+  sexHormonesFemale: {
+    name: "Geschlechtshormone (E2, PG, FSH)",
+    material: "Serum/Speichel",
+    reason: "Progesteron ist das 'Wohlfühlhormon'. Mangel macht Schlafstörungen und PMS."
+  },
+  sexHormonesMale: {
+    name: "Testosteron (Gesamt & Frei), SHBG",
+    material: "Serum",
+    reason: "Wichtig bei Antriebslosigkeit, Muskelabbau und Libidoverlust."
+  },
+
+  // --- Spezielle Spurenelemente ---
+  mangan: {
+    name: "Mangan",
+    material: "Vollblut",
+    reason: "Knorpel & Bandscheiben. Wichtig bei Gelenkbeschwerden und Histaminintoleranz."
+  },
+  chrom: {
+    name: "Chrom",
+    material: "Vollblut",
+    reason: "Zuckerstoffwechsel. Bei Heißhunger auf Süßes, Diabetes-Risiko oder metabolischem Syndrom."
+  },
+  molybdaen: {
+    name: "Molybdän",
+    material: "Vollblut",
+    reason: "Abbau von Harnsäure und Sulfiten. Wichtig bei Gichtneigung."
+  },
+  kupfer: {
+    name: "Kupfer",
+    material: "Vollblut",
+    reason: "Wichtig für Histaminabbau (DAO). Achtung: Zink und Kupfer sind Gegenspieler."
+  },
+  bor: {
+    name: "Bor",
+    material: "Serum/Vollblut",
+    reason: "Knochen & Gelenke. Hemmt zu schnellen Abbau von Vitamin D. Wichtig bei Arthrose/Osteoporose."
+  },
+  b1: {
+    name: "Vitamin B1 (Thiamin)",
+    material: "EDTA-Blut (bioaktiv)",
+    reason: "Nervenvitamin. Hoher Verbrauch bei Alkoholkonsum, viel Sport oder Neuropathie."
+  },
+  b6: {
+    name: "Vitamin B6 (P5P bioaktiv)",
+    material: "EDTA-Blut",
+    reason: "Traumvitamin & Neurotransmitter. Wichtig bei HPU, PMS und für die Psyche."
+  },
+  aminos: {
+    name: "Aminosäuren-Profil (essenzielle AA)",
+    material: "EDTA-Blut",
+    reason: "Bausteine für Muskeln, Immunsystem und Neurotransmitter. Wichtig bei Sportlern oder Eiweißmangel."
+  },
+  lipoA: {
+    name: "Lipoprotein (a)",
+    material: "Serum",
+    reason: "Genetischer Risikofaktor für Herzinfarkt/Schlaganfall. Einmalige Bestimmung empfohlen."
+  }
+};
+
+const NutrientGuideApp = () => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [showResults, setShowResults] = useState(false);
+
+  const isSelected = (qId, value) => {
+    const currentAnswer = answers[qId];
+    if (Array.isArray(currentAnswer)) {
+      return currentAnswer.includes(value);
+    }
+    return currentAnswer === value;
+  };
+
+  const handleAnswer = (questionId, option) => {
+    const currentQ = questions.find(q => q.id === questionId);
+    
+    if (currentQ.multi) {
+      setAnswers(prev => {
+        const currentSelected = prev[questionId] || [];
+        if (option.exclusive) return { ...prev, [questionId]: [option.value] };
+        
+        let newSelected = currentSelected.filter(val => {
+           const opt = currentQ.options.find(o => o.value === val);
+           return !opt?.exclusive;
+        });
+
+        if (newSelected.includes(option.value)) {
+          newSelected = newSelected.filter(v => v !== option.value);
+        } else {
+          newSelected = [...newSelected, option.value];
+        }
+        return { ...prev, [questionId]: newSelected };
+      });
+    } else {
+      setAnswers(prev => ({ ...prev, [questionId]: option.value }));
+      if (currentStep < questions.length - 1) {
+        setCurrentStep(prev => prev + 1);
+      } else {
+        setShowResults(true);
+      }
+    }
+  };
+
+  const handleTextChange = (questionId, text) => {
+    setAnswers(prev => ({ ...prev, [questionId]: text }));
+  };
+
+  const handleNext = () => {
+    if (currentStep < questions.length - 1) {
+      setCurrentStep(prev => prev + 1);
+    } else {
+      setShowResults(true);
+    }
+  };
+
+  const restart = () => {
+    setAnswers({});
+    setCurrentStep(0);
+    setShowResults(false);
+  };
+
+  const analyzeFreeText = (text) => {
+    const recs = [];
+    const lowerText = text.toLowerCase();
+    const keywords = [
+      { words: ['migräne', 'kopfschmerz'], items: [labParameters.magnesium, labParameters.coq10, labParameters.b12, labParameters.omega3] },
+      { words: ['gelenk', 'arthrose', 'knorpel', 'rücken', 'knie'], items: [labParameters.mangan, labParameters.bor, labParameters.omega3] },
+      { words: ['zucker', 'süßes', 'heißhunger', 'diabetes'], items: [labParameters.chrom, labParameters.zink, labParameters.magnesium] },
+      { words: ['gicht', 'harnsäure'], items: [labParameters.molybdaen, labParameters.omega3] },
+      { words: ['histamin', 'allergie', 'heuschnupfen'], items: [labParameters.kupfer, labParameters.zink, labParameters.b6, labParameters.vitaminC] },
+      { words: ['krampf', 'krämpfe', 'muskel', 'zucken'], items: [labParameters.magnesium, labParameters.vitaminD] },
+      { words: ['neuropathie', 'brennen', 'kribbeln', 'alkohol'], items: [labParameters.b1, labParameters.b12] },
+      { words: ['traum', 'träume', 'pms'], items: [labParameters.b6] },
+      { words: ['herz', 'rhythmus', 'stolpern'], items: [labParameters.magnesium, { name: "Kalium", material: "Vollblut", reason: "Wichtig für Herzrhythmus. Serum oft ungenau."}, labParameters.coq10] },
+      { words: ['blase', 'harnweg', 'brennen'], items: [labParameters.zink, labParameters.vitaminA] },
+      { words: ['knochen', 'osteoporose'], items: [labParameters.vitaminD, labParameters.bor, { name: "Vitamin K2", material: "Serum (ucOC)", reason: "Wichtig für den Calciumeinbau in den Knochen." }] },
+      { words: ['tinnitus', 'ohr'], items: [labParameters.coq10, labParameters.magnesium, labParameters.b12] }
+    ];
+
+    keywords.forEach(entry => {
+      if (entry.words.some(word => lowerText.includes(word))) {
+        entry.items.forEach(item => recs.push(item));
+      }
+    });
+    return recs;
+  };
+
+  const getRecommendations = () => {
+    let recs = [];
+    const hasAns = (qId, val) => {
+      const ans = answers[qId];
+      if (!ans) return false;
+      if (Array.isArray(ans)) return ans.includes(val);
+      return ans === val;
+    };
+    
+    // --- BASIS-PROFIL (Für fast jeden laut Buch sinnvoll) ---
+    recs.push(labParameters.vitaminD);
+    recs.push(labParameters.magnesium); 
+    recs.push(labParameters.zink); 
+    recs.push(labParameters.selen); 
+    recs.push(labParameters.ferritin);
+    recs.push(labParameters.homocystein);
+
+    // --- NEUE FRAGEN LOGIK (16-24) ---
+
+    // Fischkonsum (Frage 16)
+    if (hasAns(16, 'never') || hasAns(16, 'rare')) {
+      recs.push(labParameters.omega3);
+      recs.push(labParameters.iod); // Fisch ist Jodquelle
+    }
+
+    // Sport (Frage 17)
+    if (hasAns(17, 'athlete')) {
+      recs.push(labParameters.magnesium); // Hoher Verbrauch
+      recs.push(labParameters.b1); // Energiestoffwechsel
+      recs.push(labParameters.aminos); // Muskelregeneration
+      recs.push(labParameters.coq10); // Energie
+      recs.push(labParameters.ferritin); // Schweißverlust/Sauerstoff
+    }
+
+    // Sonne (Frage 18) - Vitamin D ist eh Basis, aber hier Dringlichkeit erhöhen
+    if (hasAns(18, 'low')) {
+      // Vitamin D ist schon drin, aber Bor/K2 als Cofaktoren wichtig bei Hochdosis
+      recs.push(labParameters.bor);
+    }
+
+    // Rauchen (Frage 19)
+    if (hasAns(19, 'smoker') || hasAns(19, 'occasional')) {
+      recs.push(labParameters.vitaminC); // Rauchen verbraucht massiv Vit C
+      recs.push(labParameters.selen); // Entgiftung Cadmium
+      recs.push(labParameters.b12); // Entgiftung Cyanid
+    }
+
+    // Alkohol (Frage 20)
+    if (hasAns(20, 'high')) {
+      recs.push(labParameters.b1); // Wichtigstes Vitamin bei Alkoholkonsum
+      recs.push(labParameters.magnesium);
+      recs.push(labParameters.zink);
+      recs.push(labParameters.vitaminA); // Leberbelastung
+    }
+
+    // Zähne (Frage 21)
+    if (hasAns(21, 'gums')) {
+      recs.push(labParameters.coq10);
+      recs.push(labParameters.vitaminC);
+    }
+    if (hasAns(21, 'teeth')) {
+      recs.push(labParameters.vitaminD);
+      recs.push({ name: "Vitamin K2", material: "Serum (ucOC)", reason: "Bringt Calcium in die Zähne." });
+      recs.push(labParameters.vitaminA);
+    }
+
+    // Kälte (Frage 22)
+    if (hasAns(22, 'cold')) {
+      recs.push(labParameters.thyroid);
+      recs.push(labParameters.ferritin);
+    }
+
+    // Nachtblindheit (Frage 23)
+    if (hasAns(23, 'nightblind')) {
+      recs.push(labParameters.vitaminA);
+      recs.push(labParameters.zink); // Benötigt für Vit A Transport
+    }
+
+    // Familiäre Vorbelastung (Frage 24)
+    if (hasAns(24, 'heart')) {
+      recs.push(labParameters.lipoA);
+      recs.push(labParameters.homocystein);
+      recs.push(labParameters.omega3);
+    }
+    if (hasAns(24, 'diabetes')) {
+      recs.push(labParameters.chrom);
+      recs.push({ name: "HbA1c", material: "EDTA-Blut", reason: "Langzeitzuckerwert. Früher Marker für Stoffwechselstörung." });
+    }
+    if (hasAns(24, 'osteo')) {
+      recs.push(labParameters.bor);
+      recs.push(labParameters.sexHormonesFemale); // Östrogenmangel?
+    }
+    if (hasAns(24, 'dementia')) {
+      recs.push(labParameters.homocystein); // Risikofaktor Demenz
+      recs.push(labParameters.omega3);
+      recs.push(labParameters.b12);
+    }
+
+    // --- BESTEHENDE LOGIK ---
+
+    // Energie
+    if (hasAns(4, 'low') || hasAns(4, 'adrenal')) {
+      recs.push(labParameters.b12);
+      recs.push(labParameters.coq10);
+      recs.push(labParameters.thyroid);
+      recs.push(labParameters.adrenal);
+    }
+
+    // Ernährung
+    if (hasAns(5, 'vegan') || hasAns(5, 'veg')) {
+      recs.push(labParameters.b12);
+      recs.push(labParameters.iod);
+      recs.push(labParameters.ferritin);
+      recs.push(labParameters.aminos);
+    }
+
+    // Schlaf
+    if (hasAns(6, 'sleep_maintain') || hasAns(6, 'insomnia')) {
+      if (hasAns(2, 'female')) recs.push(labParameters.sexHormonesFemale);
+      recs.push(labParameters.adrenal);
+      recs.push(labParameters.magnesium);
+    }
+
+    // Haut/Haare
+    if (hasAns(7, 'hair') || hasAns(7, 'nails') || hasAns(7, 'skin')) {
+      recs.push({ name: "Biotin (Vitamin H)", material: "Serum", reason: "Haut/Haare/Nägel." });
+      recs.push(labParameters.thyroid);
+      recs.push({ name: "Silizium", material: "Vollblut", reason: "Bindegewebe." });
+      if(hasAns(7, 'wound')) recs.push(labParameters.zink);
+    }
+
+    // Immunsystem
+    if (hasAns(8, 'weak') || hasAns(8, 'autoimmune')) {
+      recs.push(labParameters.omega3);
+      recs.push(labParameters.vitaminC);
+      recs.push(labParameters.zink);
+      recs.push(labParameters.selen);
+    }
+
+    // Muskel/Gelenk
+    if (hasAns(9, 'muscle')) recs.push(labParameters.magnesium);
+    if (hasAns(9, 'joint') || hasAns(9, 'back')) {
+      recs.push(labParameters.mangan);
+      recs.push(labParameters.bor);
+      recs.push(labParameters.omega3);
+    }
+
+    // Stimmung
+    if (hasAns(10, 'depressive') || hasAns(10, 'stressed') || hasAns(10, 'moody')) {
+      recs.push(labParameters.b6);
+      recs.push(labParameters.omega3);
+      recs.push(labParameters.adrenal);
+    }
+
+    // Hormone / Alter
+    if (hasAns(1, 'menopause') || hasAns(1, 'senior')) {
+      if (hasAns(2, 'female')) recs.push(labParameters.sexHormonesFemale);
+      if (hasAns(2, 'male')) recs.push(labParameters.sexHormonesMale);
+    }
+    
+    // Medikamente
+    if (hasAns(14, 'pill')) {
+      recs.push({ name: "B-Komplex (inkl. B6)", material: "Vollblut/Serum", reason: "Pille raubt B-Vitamine." });
+      recs.push(labParameters.magnesium);
+      recs.push(labParameters.zink); // Pille senkt Zink, erhöht Kupfer
+    }
+    if (hasAns(14, 'ppi')) {
+      recs.push(labParameters.b12);
+      recs.push(labParameters.magnesium);
+      recs.push({ name: "Calcium", material: "Vollblut", reason: "Säureblocker behindern Aufnahme." });
+    }
+    if (hasAns(14, 'meds')) { 
+       recs.push(labParameters.coq10); 
+    }
+    if (hasAns(14, 'lthyrox')) {
+       recs.push(labParameters.selen); // Wichtig für Umwandlung T4->T3
+    }
+
+    // Verdauung
+    if (hasAns(12, 'intolerance')) {
+       recs.push(labParameters.kupfer); // DAO Mangel?
+       recs.push(labParameters.b6);
+    }
+
+    // FREITEXT ANALYSE
+    if (answers[25]) {
+      const textRecs = analyzeFreeText(answers[25]);
+      textRecs.forEach(r => recs.push(r));
+    }
+
+    // Duplikate entfernen
+    const uniqueRecs = [];
+    const map = new Map();
+    for (const item of recs) {
+        if (item && !map.has(item.name)){
+            map.set(item.name, true);
+            uniqueRecs.push(item);
+        }
+    }
+    return uniqueRecs;
+  };
+
+  // --- RENDER ---
+
+  if (showResults) {
+    const recommendations = getRecommendations();
+    
+    return (
+      <div className="max-w-3xl mx-auto p-6 bg-white min-h-screen font-sans text-gray-800">
+        <header className="mb-8 text-center border-b pb-6">
+          <h1 className="text-3xl font-bold text-emerald-800 mb-2">Ihr Nährstoff-Fahrplan</h1>
+          <p className="text-gray-600">Basierend auf der Biochemie Ihres Stoffwechsels</p>
+        </header>
+
+        <div className="bg-emerald-50 border-l-4 border-emerald-500 p-4 mb-8 rounded-r-lg">
+          <div className="flex items-start">
+            <Info className="w-6 h-6 text-emerald-600 mr-3 mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold text-emerald-800">Wichtiger Hinweis zur Diagnostik</h3>
+              <p className="text-sm text-emerald-800 mt-1">
+                Laut Dr. Orfanos-Boeckel ist es entscheidend, <strong>im richtigen Material</strong> zu messen. 
+                Viele Mineralstoffe (Zink, Magnesium, Selen) befinden sich <em>in</em> den Zellen. 
+                Eine Messung im Serum (Blutwasser) zeigt oft "normale" Werte an, obwohl die Zellen leer sind.
+                Achten Sie im Laborauftrag auf den Zusatz "Vollblutanalyse" für diese Werte.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold flex items-center text-gray-700">
+            <Activity className="w-5 h-5 mr-2 text-emerald-600" />
+            Empfohlene Laborwerte ({recommendations.length})
+          </h2>
+
+          <div className="grid gap-4 md:grid-cols-1">
+            {recommendations.map((rec, idx) => (
+              <div key={idx} className="bg-white border rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-bold text-lg text-emerald-900">{rec.name}</h3>
+                  <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded font-medium border border-gray-200">
+                    {rec.material}
+                  </span>
+                </div>
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  <span className="font-semibold text-gray-700">Warum? </span>
+                  {rec.reason}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-10 bg-gray-50 p-6 rounded-xl border border-gray-100">
+          <h3 className="font-bold text-gray-800 mb-3">Nächste Schritte</h3>
+          <ul className="space-y-2 text-gray-700 text-sm">
+            <li className="flex items-start">
+              <CheckCircle className="w-4 h-4 text-emerald-500 mr-2 mt-1" />
+              Drucken Sie diese Liste aus oder speichern Sie sie.
+            </li>
+            <li className="flex items-start">
+              <CheckCircle className="w-4 h-4 text-emerald-500 mr-2 mt-1" />
+              Suchen Sie einen Arzt oder ein Labor, das "Vollblutdiagnostik" anbietet. Normale Hausarzt-Labore machen oft nur Serum.
+            </li>
+            <li className="flex items-start">
+              <CheckCircle className="w-4 h-4 text-emerald-500 mr-2 mt-1" />
+              Lassen Sie die Werte nüchtern abnehmen (besonders für Homocystein & Blutzucker).
+            </li>
+            <li className="flex items-start">
+              <CheckCircle className="w-4 h-4 text-emerald-500 mr-2 mt-1" />
+              Füllen Sie die Speicher gezielt auf (nicht "Gießkanne", sondern nach Mangel).
+            </li>
+          </ul>
+        </div>
+
+        <button 
+          onClick={restart}
+          className="mt-8 w-full py-3 flex items-center justify-center text-emerald-700 font-medium hover:bg-emerald-50 rounded-lg transition-colors"
+        >
+          <RotateCcw className="w-4 h-4 mr-2" />
+          Analyse neu starten
+        </button>
+      </div>
+    );
+  }
+
+  // --- FRAGEN STEPPER ---
+
+  const currentQ = questions[currentStep];
+  const progress = ((currentStep + 1) / questions.length) * 100;
+
+  return (
+    <div className="max-w-2xl mx-auto p-6 min-h-screen flex flex-col justify-center font-sans">
+      
+      {/* Progress Bar */}
+      <div className="w-full bg-gray-200 h-2 rounded-full mb-8">
+        <div 
+          className="bg-emerald-500 h-2 rounded-full transition-all duration-300 ease-out" 
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+
+      {/* Header */}
+      <div className="mb-8">
+        <span className="text-emerald-600 font-medium text-sm tracking-wide uppercase">
+          Frage {currentStep + 1} von {questions.length}
+        </span>
+        <h2 className="text-2xl font-bold text-gray-800 mt-2 leading-snug">
+          {currentQ.text}
+        </h2>
+        {currentQ.multi && currentQ.type !== 'text' && (
+          <p className="text-sm text-gray-500 mt-1">Mehrfachauswahl möglich</p>
+        )}
+      </div>
+
+      {/* Input Area */}
+      <div className="space-y-3">
+        {currentQ.type === 'text' ? (
+          <div className="space-y-4">
+            <textarea
+              className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none h-32 resize-none"
+              placeholder={currentQ.placeholder}
+              value={answers[currentQ.id] || ''}
+              onChange={(e) => handleTextChange(currentQ.id, e.target.value)}
+            />
+            <button
+              onClick={handleNext}
+              className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors shadow-md flex items-center justify-center"
+            >
+              Analyse starten <ArrowRight className="ml-2 w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          /* Options */
+          currentQ.options.map((option) => {
+            const selected = isSelected(currentQ.id, option.value);
+            return (
+              <button
+                key={option.value}
+                onClick={() => handleAnswer(currentQ.id, option)}
+                className={`w-full text-left p-4 rounded-xl border transition-all duration-200 group flex items-center justify-between shadow-sm 
+                  ${selected 
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-500' 
+                    : 'border-gray-200 bg-white hover:border-emerald-500 hover:bg-emerald-50 text-gray-700'
+                  }`}
+              >
+                <span className="font-medium">
+                  {option.label}
+                </span>
+                {selected 
+                  ? <CheckCircle className="w-5 h-5 text-emerald-500" />
+                  : <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-emerald-500" />
+                }
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      {/* Next Button for Multi-Select (only show if NOT text input) */}
+      {currentQ.multi && currentQ.type !== 'text' && (
+        <button
+          onClick={handleNext}
+          disabled={!answers[currentQ.id] || answers[currentQ.id].length === 0}
+          className="mt-6 w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+        >
+          Weiter
+        </button>
+      )}
+
+      {/* Footer Info */}
+      <div className="mt-12 flex items-center justify-center text-gray-400 text-sm">
+        <Droplet className="w-4 h-4 mr-1" />
+        <span>Stoffwechsel-Analyse nach Dr. Orfanos-Boeckel</span>
+      </div>
+
+    </div>
+  );
+};
+
+export default NutrientGuideApp;
