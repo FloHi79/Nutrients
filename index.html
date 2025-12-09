@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nährstoff-Kompass | Dr. Orfanos-Boeckel Analyse</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel für JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        body { background-color: #f8fafc; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- API KONFIGURATION ---
+        const apiKey = "AIzaSyBDJ3qmA8dFqDJpKxDzWfnA99B44aq0ep4"; 
+
+        // --- ICONS COMPONENT (Wrapper für Lucide) ---
+        const Icon = ({ name, className }) => {
+            useEffect(() => {
+                lucide.createIcons();
+            }, [name]); 
+            return <i data-lucide={name} className={className}></i>;
+        };
+
+        // --- DATENBASIS ---
+        const questions = [
+            { id: 1, text: "Wie alt sind Sie?", options: [{ label: "Unter 30 / Jugendliche(r)", value: "young" }, { label: "30 - 45", value: "middle" }, { label: "46 - 60 (Wechseljahre/Andropause)", value: "menopause" }, { label: "Über 60", value: "senior" }] },
+            { id: 2, text: "Welches Geschlecht haben Sie?", options: [{ label: "Weiblich", value: "female" }, { label: "Männlich", value: "male" }] },
+            { id: 3, text: "Was ist Ihr primäres Ziel? (Mehrfachauswahl)", multi: true, options: [{ label: "Energie & Post-Viral-Recovery", value: "energy_youth" }, { label: "Prävention & gesund alt werden", value: "prevention" }, { label: "Leistungssteigerung", value: "performance" }, { label: "Linderung chronischer Beschwerden", value: "healing" }, { label: "Gewichtsreduktion / Stoffwechsel", value: "weight" }] },
+            { id: 4, text: "Energielevel beschreiben:", options: [{ label: "Top fit", value: "high" }, { label: "Geht so, Mittagstief", value: "medium" }, { label: "Dauerhaft erschöpft / Antriebslos", value: "low" }, { label: "Morgens müde, abends wach", value: "adrenal" }] },
+            { id: 13, text: "Stresslevel im Alltag:", options: [{ label: "Niedrig", value: "low" }, { label: "Mittel", value: "medium" }, { label: "Hoch (Prüfungsstress/Dauerstrom)", value: "high" }] },
+            { id: 5, text: "Ernährungsweise:", options: [{ label: "Mischkost (Alles)", value: "omni" }, { label: "Vegetarisch", value: "veg" }, { label: "Vegan", value: "vegan" }, { label: "Low Carb / Keto", value: "keto" }, { label: "Fast Food / Unregelmäßig", value: "junk" }] },
+            { id: 16, text: "Fischkonsum (Seefisch):", options: [{ label: "Mindestens 2x pro Woche", value: "often" }, { label: "Ab und zu / Selten", value: "rare" }, { label: "Nie / Ich mag keinen Fisch", value: "never" }] },
+            { id: 17, text: "Sportpensum:", options: [{ label: "Kein Sport", value: "none" }, { label: "Moderat / Hobby", value: "moderate" }, { label: "Leistungssport / Intensiv", value: "athlete" }] },
+            { id: 18, text: "Sonnenexposition (ohne Creme):", options: [{ label: "Viel", value: "high" }, { label: "Mittel", value: "medium" }, { label: "Wenig (Drinnenhocker)", value: "low" }] },
+            { id: 19, text: "Rauchen:", options: [{ label: "Nein", value: "no" }, { label: "Gelegentlich", value: "occasional" }, { label: "Regelmäßig", value: "smoker" }] },
+            { id: 20, text: "Alkohol:", options: [{ label: "Nein / Selten", value: "no" }, { label: "Mäßig", value: "moderate" }, { label: "Regelmäßig", value: "high" }] },
+            { id: 6, text: "Schlaf:", multi: true, options: [{ label: "Gut", value: "no", exclusive: true }, { label: "Einschlafprobleme", value: "sleep_onset" }, { label: "Durchschlafprobleme", value: "sleep_maintain" }, { label: "Keine Traumerinnerung", value: "no_dreams" }] },
+            { id: 7, text: "Haut/Haare/Nägel:", multi: true, options: [{ label: "Alles gut", value: "no", exclusive: true }, { label: "Akne / Unreine Haut", value: "acne" }, { label: "Haarausfall", value: "hair" }, { label: "Weiße Flecken auf Nägeln", value: "white_spots" }, { label: "Trockene Haut", value: "skin" }, { label: "Dehnungsstreifen", value: "stretchmarks" }] },
+            { id: 8, text: "Immunsystem:", multi: true, options: [{ label: "Stabil", value: "good", exclusive: true }, { label: "Häufige Infekte", value: "weak" }, { label: "Post-Viral (EBV/Covid/Grippe)", value: "postviral" }, { label: "Autoimmunerkrankung", value: "autoimmune" }] },
+            { id: 9, text: "Muskeln/Gelenke:", multi: true, options: [{ label: "Keine Beschwerden", value: "no", exclusive: true }, { label: "Überbewegliche Gelenke", value: "hypermobile" }, { label: "Krämpfe / Verspannungen", value: "muscle" }, { label: "Gelenkschmerzen / Arthrose", value: "joint" }] },
+            { id: 21, text: "Zähne/Zahnfleisch:", options: [{ label: "Gut", value: "no" }, { label: "Zahnfleischbluten", value: "gums" }, { label: "Kariesanfälligkeit", value: "teeth" }] },
+            { id: 22, text: "Kälteempfinden:", options: [{ label: "Normal", value: "normal" }, { label: "Friere leicht", value: "cold" }, { label: "Mir ist eher zu warm", value: "hot" }] },
+            { id: 10, text: "Stimmungslage:", multi: true, options: [{ label: "Ausgeglichen", value: "balanced", exclusive: true }, { label: "Hochsensibel / Lärmempfindlich", value: "hsp" }, { label: "Ängstlich / Depressiv", value: "depressive" }, { label: "Stimmungsschwankungen", value: "moody" }, { label: "ADHS / Unruhe", value: "adhs" }] },
+            { id: 11, text: "Schilddrüse:", options: [{ label: "Unauffällig", value: "no" }, { label: "Unterfunktion / Hashimoto", value: "hypo" }, { label: "Überfunktion", value: "hyper" }] },
+            { id: 12, text: "Verdauung:", multi: true, options: [{ label: "Gut", value: "no", exclusive: true }, { label: "Morgendliche Übelkeit", value: "morning_nausea" }, { label: "Blähbauch / Reizdarm", value: "bloating" }, { label: "Unverträglichkeiten", value: "intolerance" }] },
+            { id: 24, text: "Familiäre Vorbelastung:", multi: true, options: [{ label: "Keine", value: "no", exclusive: true }, { label: "Schilddrüse / Hashimoto", value: "fam_thyroid" }, { label: "Diabetes", value: "diabetes" }, { label: "Psychische Erkrankungen", value: "fam_psyche" }, { label: "Herz/Kreislauf", value: "heart" }] },
+            { id: 14, text: "Medikamente:", multi: true, hasFreeText: true, freeTextPlaceholder: "Sonstige (z.B. Antibiotika)...", options: [{ label: "Keine", value: "no", exclusive: true }, { label: "Antibabypille", value: "pill" }, { label: "Säureblocker (PPI)", value: "ppi" }, { label: "Antiallergika", value: "allergy" }, { label: "Schilddrüsenhormone", value: "lthyrox" }] },
+            { id: 15, text: "Kognitive Leistung:", multi: true, options: [{ label: "Klarer Kopf", value: "no", exclusive: true }, { label: "Konzentrationsstörungen", value: "focus" }, { label: "Brain Fog", value: "fog" }, { label: "Vergesslichkeit", value: "memory" }] },
+            { id: 25, text: "Freitext / Sonstiges:", type: "text", placeholder: "Beschreiben Sie hier alles Weitere (z.B. 'Ich vertrage Stress überhaupt nicht'...)" }
+        ];
+
+        // --- LABORWERTE-KATALOG ---
+        const labParameters = {
+            vitaminD: { name: "Vitamin D3 (25-OH)", material: "Serum", reason: "Basiswert. Mangel in DE sehr häufig (Ziel: 50-70 ng/ml)." },
+            magnesium: { name: "Magnesium", material: "Vollblut (Heparin/EDTA)", reason: "Serumwert oft falsch gut! Wichtig bei Stress & Lernen." },
+            zink: { name: "Zink", material: "Vollblut (EDTA)", reason: "Intrazellulär messen! Wichtig für Haut, Immunsystem und bei HPU." },
+            selen: { name: "Selen", material: "Vollblut (EDTA)", reason: "Deutschland ist Mangelgebiet. Schilddrüsen- und Zellschutz." },
+            ferritin: { name: "Ferritin", material: "Serum", reason: "Eisenspeicher. Wichtigste Ursache für Müdigkeit bei jungen Frauen!" },
+            homocystein: { name: "Homocystein", material: "Serum", reason: "Funktionsmarker für B-Vitamine (B6/B12/Folsäure)." },
+            ebv: { name: "EBV-Antikörper", material: "Serum", reason: "Ausschluss reaktiviertes Pfeiffersches Drüsenfieber." },
+            b6: { name: "Vitamin B6 (Bioaktiv P5P)", material: "EDTA-Blut", reason: "Wichtig bei Traumlosigkeit, PMS und Stress. 'Traumvitamin'." },
+            mangan: { name: "Mangan", material: "Vollblut", reason: "Wichtig für Knorpel, Bindegewebe und Histaminabbau." },
+            b12: { name: "Vitamin B12 (Holo-TC)", material: "Serum", reason: "Aktives B12. Wichtig für Nerven, Energie." },
+            omega3: { name: "Omega-3 Index", material: "Erythrozyten", reason: "Entzündungshemmung. Wichtig für Gehirn und Gelenke." },
+            coq10: { name: "Coenzym Q10", material: "Serum/Vollblut", reason: "Zellbenzin (Mitochondrien). Bei Erschöpfung essenziell." },
+            iod: { name: "Jod", material: "Serum/Urin", reason: "Schilddrüse, Brustgewebe, Energie." },
+            vitaminA: { name: "Vitamin A", material: "Serum", reason: "Wichtig bei Hautproblemen und Immunsystem." },
+            vitaminC: { name: "Vitamin C", material: "Vollblut (gefroren)", reason: "Bei Infektneigung." },
+            thyroid: { name: "Schilddrüse (TSH, fT3, fT4, TPO)", material: "Serum", reason: "TSH reicht nicht. fT3 ist das Gaspedal. TPO zeigt Hashimoto." },
+            adrenal: { name: "Nebennieren (Cortisol-Profil)", material: "Speichel", reason: "Bei Stressintoleranz und Erschöpfung." },
+            hormonesF: { name: "Geschlechtshormone (E2, PG)", material: "Serum (21. Zyklustag)", reason: "Bei Zyklusbeschwerden, PMS, Akne." },
+            chrom: { name: "Chrom", material: "Vollblut", reason: "Bei Heißhunger auf Süßes." },
+            kupfer: { name: "Kupfer", material: "Vollblut", reason: "Gegenspieler von Zink. Bei Pille oft zu hoch." },
+            bor: { name: "Bor", material: "Vollblut", reason: "Wichtig für Knochen und Hormonbalance." },
+            aminos: { name: "Aminosäuren-Profil", material: "EDTA-Blut", reason: "Eiweißbausteine. Wichtig für Immunsystem und Muskelaufbau." },
+            leber: { name: "Leberwerte (GOT, GPT)", material: "Serum", reason: "Medikamentenkontrolle." },
+            lipoA: { name: "Lipoprotein (a)", material: "Serum", reason: "Genetischer kardiovaskulärer Risikofaktor." }
+        };
+
+        const runLocalAnalysis = (answers) => {
+            let recs = [];
+            const has = (id, val) => {
+                const a = answers[id];
+                if(!a) return false;
+                if(Array.isArray(a)) return a.includes(val);
+                return a === val;
+            };
+
+            recs.push(labParameters.vitaminD, labParameters.magnesium, labParameters.zink, labParameters.selen, labParameters.ferritin, labParameters.homocystein);
+
+            // Stealth HPU
+            let hpuScore = 0;
+            if(has(6, 'no_dreams')) hpuScore++;
+            if(has(7, 'white_spots') || has(7, 'stretchmarks')) hpuScore++;
+            if(has(9, 'hypermobile')) hpuScore++;
+            if(has(10, 'hsp')) hpuScore++;
+            if(has(12, 'morning_nausea')) hpuScore++;
+            if(has(13, 'high_sensitive')) hpuScore++; 
+            if (hpuScore >= 2) recs.push(labParameters.b6, labParameters.mangan, labParameters.zink);
+
+            if (has(8, 'postviral') || has(8, 'weak') || has(4, 'low')) {
+                recs.push(labParameters.coq10, labParameters.vitaminC, labParameters.omega3, labParameters.b12);
+                if (has(1, 'young') || has(8, 'postviral')) recs.push(labParameters.ebv);
+            }
+
+            if (has(1, 'young')) {
+                if (has(14, 'pill')) recs.push(labParameters.b6, labParameters.magnesium);
+                if (has(7, 'acne') || has(7, 'skin')) recs.push(labParameters.vitaminA, labParameters.zink);
+                if (has(15, 'focus') || has(15, 'fog') || has(10, 'adhs')) recs.push(labParameters.omega3, labParameters.b6, labParameters.ferritin, labParameters.iod);
+            }
+
+            if(has(5,'vegan') || has(5,'veg') || has(5,'junk')) recs.push(labParameters.b12, labParameters.iod, labParameters.aminos, labParameters.ferritin);
+            if(has(9,'muscle') || has(9,'growth')) recs.push(labParameters.magnesium, labParameters.mangan);
+            if(has(9,'joint')) recs.push(labParameters.bor, labParameters.omega3);
+            if(has(10,'depressive') || has(10,'stressed')) recs.push(labParameters.b6, labParameters.omega3, labParameters.adrenal);
+
+            const medsText = (answers['14_text'] || "").toLowerCase();
+            const freeText = (answers['25'] || "").toLowerCase();
+            const allText = medsText + " " + freeText;
+
+            if (allText.includes("akne") || has(14, 'acne_med')) recs.push(labParameters.leber);
+            if (allText.includes("metformin")) recs.push(labParameters.b12);
+            if(has(24, 'heart')) recs.push(labParameters.lipoA);
+            if(has(1,'menopause') || has(1,'senior')) {
+                if(has(2,'female')) recs.push(labParameters.hormonesF);
+                if(has(2,'male')) recs.push(labParameters.hormonesM);
+            }
+
+            const unique = [];
+            const map = new Map();
+            for (const item of recs) {
+                if(item && !map.has(item.name)){
+                    map.set(item.name, true);
+                    unique.push(item);
+                }
+            }
+            return unique;
+        };
+
+        const NutrientGuideApp = () => {
+            const [step, setStep] = useState(0);
+            const [answers, setAnswers] = useState({});
+            const [result, setResult] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [errorMsg, setErrorMsg] = useState(null);
+
+            const handleAnswer = (qId, option) => {
+                const q = questions.find(x => x.id === qId);
+                if(q.multi) {
+                    setAnswers(prev => {
+                        const list = prev[qId] || [];
+                        if(option.exclusive) {
+                            const newState = {...prev, [qId]: [option.value]};
+                            delete newState[qId + '_text']; 
+                            return newState;
+                        }
+                        let newList = list.filter(v => {
+                            const o = q.options.find(opt => opt.value === v);
+                            return !o?.exclusive;
+                        });
+                        if(newList.includes(option.value)) newList = newList.filter(v => v !== option.value);
+                        else newList.push(option.value);
+                        return {...prev, [qId]: newList};
+                    });
+                } else {
+                    setAnswers(prev => ({...prev, [qId]: option.value}));
+                    nextStep();
+                }
+            };
+
+            const handleTextChange = (key, text) => {
+                setAnswers(prev => ({ ...prev, [key]: text }));
+            };
+
+            const nextStep = () => {
+                if(step < questions.length - 1) setStep(s => s + 1);
+                else analyze();
+            };
+            
+            // --- FIX: RESTART FUNKTION NACH OBEN VERSCHOBEN ---
+            const restart = () => {
+                setStep(0);
+                setAnswers({});
+                setResult(null);
+                setLoading(false);
+                setErrorMsg(null);
+            };
+
+            const analyze = async () => {
+                setLoading(true);
+                setResult(null); 
+                setErrorMsg(null);
+
+                const localRecs = runLocalAnalysis(answers);
+                const localSummary = "Ihr Profil deutet auf spezifische Stoffwechsel-Bedürfnisse hin. Bitte beachten Sie die Vollblut-Werte für Mineralstoffe, da Serumwerte oft irreführend normal sind.";
+
+                try {
+                    let profileText = "";
+                    questions.forEach(q => {
+                        let a = answers[q.id];
+                        let txt = answers[q.id + '_text'];
+                        if(Array.isArray(a)) a = a.join(", ");
+                        if(a || txt) profileText += `${q.text}: ${a || ''} ${txt ? `(${txt})` : ''}\n`;
+                    });
+
+                    const prompt = `
+                        Als Experte für funktionelle Labordiagnostik (Dr. Orfanos-Boeckel) erstelle eine Liste der notwendigen LABORUNTERSUCHUNGEN.
+                        WICHTIG: Gib NUR DIAGNOSTISCHE Parameter aus (keine Therapieempfehlungen!). Erkläre, WARUM gemessen werden soll. Achte auf PROBENMATERIAL (Vollblut vs. Serum).
+                        Profil: ${profileText}
+                        Antworte als reines JSON-Objekt mit den Feldern "recommendations" (Array aus name, material, reason) und "summary".
+                    `;
+
+                    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+
+                    if(!resp.ok) {
+                        console.warn("KI nicht erreichbar, nutze lokale Logik.");
+                        setResult({ recommendations: localRecs, summary: localSummary, source: "Analyse (Lokal)" });
+                    } else {
+                        const data = await resp.json();
+                        let text = data.candidates[0].content.parts[0].text;
+                        const jsonMatch = text.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) text = jsonMatch[0];
+                        const json = JSON.parse(text);
+                        setResult({ ...json, source: "Analyse (KI)" });
+                    }
+                } catch (e) {
+                    console.error(e);
+                    setResult({ recommendations: localRecs, summary: localSummary, source: "Analyse (Lokal)" });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const q = questions[step];
+            const progress = ((step + 1) / questions.length) * 100;
+            const isSel = (val) => {
+                const a = answers[q.id];
+                return Array.isArray(a) ? a.includes(val) : a === val;
+            };
+
+            if(loading) return (
+                <div className="min-h-screen flex flex-col items-center justify-center bg-emerald-50 text-emerald-800">
+                     <Icon name="loader-2" className="w-16 h-16 animate-spin mb-4" />
+                    <h2 className="text-xl font-bold">Ermittle Laborparameter...</h2>
+                    <p className="text-sm opacity-75">Stelle Diagnostik-Profil zusammen</p>
+                </div>
+            );
+
+            if(result) return (
+                <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen font-sans">
+                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden fade-in">
+                        <div className="bg-emerald-800 text-white p-8 text-center">
+                            <h1 className="text-3xl font-bold mb-2">Ihr Labor-Anforderungsschein</h1>
+                            <div className="flex items-center justify-center gap-2 opacity-80 text-sm">
+                                <Icon name="microscope" className="w-4 h-4" />
+                                <span>Empfohlene Diagnostik ({result.source})</span>
+                            </div>
+                        </div>
+
+                        <div className="p-8">
+                            <div className="mb-10 bg-emerald-50 p-6 rounded-xl border border-emerald-100">
+                                <h3 className="text-xl font-bold text-emerald-900 mb-3 flex items-center">
+                                    <Icon name="message-square" className="w-5 h-5 mr-2" />
+                                    Fazit zur Diagnostik
+                                </h3>
+                                <p className="text-emerald-800 leading-relaxed">{result.summary}</p>
+                            </div>
+
+                            <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                                <Icon name="activity" className="w-5 h-5 mr-2 text-emerald-600" />
+                                Priorisierte Laborparameter
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 bg-gray-100 rounded-lg text-sm font-bold text-gray-600 uppercase tracking-wider">
+                                    <div className="col-span-4">Laborwert</div>
+                                    <div className="col-span-3">Material</div>
+                                    <div className="col-span-5">Begründung</div>
+                                </div>
+
+                                {result.recommendations.map((item, i) => (
+                                    <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border border-gray-200 rounded-lg bg-white hover:shadow-md transition-shadow items-start">
+                                        <div className="col-span-1 md:col-span-4">
+                                            <span className="md:hidden text-xs font-bold text-gray-500 uppercase block mb-1">Laborwert</span>
+                                            <span className="font-bold text-gray-800 text-lg">{item.name}</span>
+                                        </div>
+                                        <div className="col-span-1 md:col-span-3">
+                                            <span className="md:hidden text-xs font-bold text-gray-500 uppercase block mb-1">Material</span>
+                                            <span className={`inline-block px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${
+                                                item.material?.toLowerCase().includes('voll') ? 'bg-red-100 text-red-700' : 
+                                                item.material?.toLowerCase().includes('speichel') ? 'bg-blue-100 text-blue-700' :
+                                                'bg-gray-100 text-gray-600'
+                                            }`}>
+                                                {item.material}
+                                            </span>
+                                        </div>
+                                        <div className="col-span-1 md:col-span-5">
+                                            <span className="md:hidden text-xs font-bold text-gray-500 uppercase block mb-1">Begründung</span>
+                                            <p className="text-sm text-gray-600 leading-relaxed">{item.reason}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-12 flex justify-center">
+                                <button onClick={restart} className="flex items-center px-8 py-3 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-colors">
+                                    <Icon name="rotate-ccw" className="w-4 h-4 mr-2" /> Neue Analyse starten
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="max-w-2xl mx-auto p-6 min-h-screen flex flex-col justify-center fade-in">
+                    <div className="mb-8">
+                        <div className="w-full bg-gray-200 h-2 rounded-full mb-4">
+                            <div className="bg-emerald-600 h-2 rounded-full transition-all duration-500" style={{width: `${progress}%`}}></div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-emerald-600 font-bold tracking-widest text-xs uppercase">Frage {step + 1} von {questions.length}</span>
+                            {answers[1] === 'young' && <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold flex items-center"><Icon name="graduation-cap" className="w-3 h-3 mr-1"/> U30</span>}
+                        </div>
+                        <h2 className="text-3xl font-bold text-gray-900 mt-2">{q.text}</h2>
+                        {q.multi && q.type !== 'text' && <p className="text-sm text-gray-500 mt-1">Mehrfachauswahl möglich</p>}
+                    </div>
+
+                    <div className="space-y-3">
+                        {q.type === 'text' ? (
+                            <textarea 
+                                className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-0 h-40 text-lg transition-colors"
+                                placeholder={q.placeholder}
+                                value={answers[q.id] || ''}
+                                onChange={e => handleTextChange(q.id, e.target.value)}
+                            />
+                        ) : (
+                            q.options.map(opt => (
+                                <button key={opt.value} onClick={() => handleAnswer(q.id, opt)} className={`w-full text-left p-5 rounded-xl border-2 transition-all flex justify-between items-center group ${isSel(opt.value) ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : 'border-gray-100 bg-white hover:border-emerald-200 text-gray-700 hover:bg-gray-50'}`}>
+                                    <span className="font-medium text-lg">{opt.label}</span>
+                                    {isSel(opt.value) && <Icon name="check-circle" className="w-6 h-6 text-emerald-500" />}
+                                </button>
+                            ))
+                        )}
+
+                        {q.hasFreeText && (
+                            <div className="mt-4 animate-fade-in">
+                                <label className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2 block">Zusatzinfos</label>
+                                <div className="relative">
+                                    <div className="absolute top-3 left-3 text-gray-400"><Icon name="pill" className="w-5 h-5"/></div>
+                                    <input type="text" className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 transition-colors" placeholder={q.freeTextPlaceholder} value={answers[q.id + '_text'] || ''} onChange={e => handleTextChange(q.id + '_text', e.target.value)} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {(q.multi || q.type === 'text') && (
+                        <button onClick={nextStep} disabled={!answers[q.id] && !answers[q.id+'_text']} className="mt-8 w-full bg-emerald-600 text-white p-4 rounded-xl font-bold text-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center">
+                            {step === questions.length - 1 ? "Auswertung starten" : "Weiter"}
+                            <Icon name="arrow-right" className="ml-2 w-5 h-5" />
+                        </button>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<NutrientGuideApp />);
+    </script>
+</body>
+</html>
